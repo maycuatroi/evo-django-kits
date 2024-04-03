@@ -1,4 +1,5 @@
 """Python setup.py for evo_django_kits package"""
+
 import io
 import os
 from setuptools import find_packages, setup
