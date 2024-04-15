@@ -89,29 +89,21 @@ def create_release(next_version=None):
     tag_url = (
         f"https://api.github.com/repos/{current_user_name}/{current_repo}/git/refs"
     )
-    tag_headers = {
-        "Authorization": f"token {github_token}",
-        "Accept": "application/vnd.github.v3+json",
-    }
     current_commit_id = subprocess.run(
         ["git", "rev-parse", "HEAD"], capture_output=True
     ).stdout.decode()
     tag_data = {"ref": f"refs/tags/{next_version}", "sha": current_commit_id.strip()}
 
-    res = requests.post(tag_url, headers=tag_headers, json=tag_data)
+    res = requests.post(tag_url, headers=headers, json=tag_data)
     res.raise_for_status()
 
     change_log = get_diff_between_versions(from_version, next_version)
     release_url = (
         f"https://api.github.com/repos/{current_user_name}/{current_repo}/releases"
     )
-    release_headers = {
-        "Authorization": f"token {github_token}",
-        "Accept": "application/vnd.github.v3+json",
-    }
     release_data = {"tag_name": next_version, "name": next_version, "body": change_log}
 
-    res = requests.post(release_url, headers=release_headers, json=release_data)
+    res = requests.post(release_url, headers=headers, json=release_data)
     res.raise_for_status()
     print(f"Release created for version {next_version}")
     print(f"Change log: {change_log}")
