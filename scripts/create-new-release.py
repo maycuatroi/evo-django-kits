@@ -5,7 +5,9 @@ from glob import glob
 
 import git
 import requests
+from dotenv import load_dotenv
 
+load_dotenv()
 github_token = os.environ.get("GITHUB_TOKEN")
 
 if not github_token:
@@ -19,11 +21,13 @@ def bump_version(version):
     # commit the change
     subprocess.run(["git", "add", version_path])
     subprocess.run(["git", "commit", "-m", f"Bump version to {version}"])
+    subprocess.run(["git", "push"])
     print(f"Bumped version to {version}")
 
 
 def get_version():
-    with open("VERSION", "r") as f:
+    version_file = glob("**/VERSION", recursive=True)[0]
+    with open(version_file, "r") as f:
         return f.read().strip()
 
 
@@ -72,7 +76,11 @@ def create_release(next_version=None):
         "Authorization": f"token {github_token}",
         "Accept": "application/vnd.github.v3+json",
     }
-    tag_data = {"ref": f"refs/tags/{next_version}", "sha": "main"}
+    current_commit_id = subprocess.run(
+        ["git", "rev-parse", "HEAD"], capture_output=True
+    ).stdout.decode()
+    tag_data = {"ref": f"refs/tags/{next_version}", "sha": current_commit_id.strip()}
+
     res = requests.post(tag_url, headers=tag_headers, json=tag_data)
     res.raise_for_status()
 
