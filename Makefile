@@ -27,14 +27,14 @@ install:          ## Install the project in dev mode.
 .PHONY: fmt
 fmt:              ## Format code using black & isort.
 	$(ENV_PREFIX)isort evo_django_kits/
-	$(ENV_PREFIX)black -l 79 evo_django_kits/
-	$(ENV_PREFIX)black -l 79 tests/
+	$(ENV_PREFIX)black -l 120 evo_django_kits/
+	$(ENV_PREFIX)black -l 120 tests/
 
 .PHONY: lint
 lint:             ## Run pep8, black, mypy linters.
 	$(ENV_PREFIX)flake8 evo_django_kits/
-	$(ENV_PREFIX)black -l 79 --check evo_django_kits/
-	$(ENV_PREFIX)black -l 79 --check tests/
+	$(ENV_PREFIX)black -l 120 --check evo_django_kits/
+	$(ENV_PREFIX)black -l 120 --check tests/
 	$(ENV_PREFIX)mypy --ignore-missing-imports evo_django_kits/
 
 .PHONY: test
@@ -114,6 +114,11 @@ switch-to-poetry: ## Switch to poetry package manager.
 .PHONY: init
 init:             ## Initialize the project based on an application template.
 	@./.github/init.sh
+
+create-release:
+	@echo "Creating release"
+	# execute the release script
+	python scripts/create-new-release.py
 
 
 # This project has been generated from rochacbruno/python-project-template

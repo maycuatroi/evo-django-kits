@@ -3,11 +3,7 @@ from rest_framework.response import Response
 
 class EvoResponse(Response):
     def __init__(
-        self,
-        message=None,
-        data=None,
-        status=None,
-        headers=None,
+        self, message=None, data=None, status=None, headers=None,
     ):
         status = status or 200
 

@@ -1,14 +1,20 @@
 # evo_django_kits
 
-[![codecov](https://codecov.io/gh/maycuatroi/evo-django-kits/branch/main/graph/badge.svg?token=evo-django-kits_token_here)](https://codecov.io/gh/maycuatroi/evo-django-kits)
 [![CI](https://github.com/maycuatroi/evo-django-kits/actions/workflows/main.yml/badge.svg)](https://github.com/maycuatroi/evo-django-kits/actions/workflows/main.yml)
+[![PyPI version](https://badge.fury.io/py/evo-django-kits.svg)](https://badge.fury.io/py/evo-django-kits)
+[![PyPI - Downloads](https://img.shields.io/pypi/dm/evo-django-kits)](https://pypi.org/project/evo-django-kits/)
+[![PyPI - Python Version](https://img.shields.io/pypi/pyversions/evo-django-kits)](https://pypi.org/project/evo-django-kits/)
+[![PyPI - License](https://img.shields.io/pypi/l/evo-django-kits)](https://pypi.org/project/evo-django-kits/)
+[![GitHub issues](https://img.shields.io/github/issues/maycuatroi/evo-django-kits)](
+https://github.com/maycuatroi/evo-django-kits/issues
+)
 
 Awesome evo_django_kits created by maycuatroi
 
 ## Install it from PyPI
 
 ```bash
-pip install evo_django_kits
+pip install evo-django-kits
 ```
 
 ## Usage
