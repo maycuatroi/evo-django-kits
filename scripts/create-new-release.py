@@ -13,11 +13,31 @@ github_token = os.environ.get("GITHUB_TOKEN")
 if not github_token:
     raise ValueError("GITHUB_TOKEN is not set")
 
+headers = {
+    "Authorization": f"token {github_token}",
+    "Accept": "application/vnd.github.v3+json",
+}
+
+
+def get_user_and_email():
+    url = "https://api.github.com/user"
+    res = requests.get(url, headers=headers)
+    data = res.json()
+    user_name = data["login"]
+    email = data["email"]
+    return user_name, email
+
 
 def bump_version(version):
     version_path = glob("**/VERSION", recursive=True)[0]
     with open(version_path, "w") as f:
         f.write(version)
+
+    # set current user email and name
+    username, email = get_user_and_email()
+    subprocess.run(["git", "config", "user.email", email])
+    subprocess.run(["git", "config", "user.name", username])
+
     # commit the change
     subprocess.run(["git", "add", version_path])
     subprocess.run(["git", "commit", "-m", f"Bump version to {version}"])
@@ -45,10 +65,7 @@ def get_diff_between_versions(old_version, new_version):
 
 def get_current_user_name_with_github_token():
     url = "https://api.github.com/user"
-    headers = {
-        "Authorization": f"token {github_token}",
-        "Accept": "application/vnd.github.v3+json",
-    }
+
     res = requests.get(url, headers=headers)
     res.raise_for_status()
     return res.json()["login"]
