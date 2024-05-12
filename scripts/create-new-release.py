@@ -86,21 +86,15 @@ def create_release(next_version=None):
     bump_version(next_version)
 
     # create tag
-    tag_url = (
-        f"https://api.github.com/repos/{current_user_name}/{current_repo}/git/refs"
-    )
-    current_commit_id = subprocess.run(
-        ["git", "rev-parse", "HEAD"], capture_output=True
-    ).stdout.decode()
+    tag_url = f"https://api.github.com/repos/{current_user_name}/{current_repo}/git/refs"
+    current_commit_id = subprocess.run(["git", "rev-parse", "HEAD"], capture_output=True).stdout.decode()
     tag_data = {"ref": f"refs/tags/{next_version}", "sha": current_commit_id.strip()}
 
     res = requests.post(tag_url, headers=headers, json=tag_data)
     res.raise_for_status()
 
     change_log = get_diff_between_versions(from_version, next_version)
-    release_url = (
-        f"https://api.github.com/repos/{current_user_name}/{current_repo}/releases"
-    )
+    release_url = f"https://api.github.com/repos/{current_user_name}/{current_repo}/releases"
     release_data = {"tag_name": next_version, "name": next_version, "body": change_log}
 
     res = requests.post(release_url, headers=headers, json=release_data)
@@ -128,7 +122,5 @@ if __name__ == "__main__":
     else:
         current_version = get_version()
         next_version = get_next_version(current_version)
-        input(
-            f"Version is not provided. Press Enter to create a release for '{current_version} --> {next_version}'"
-        )
+        input(f"Version is not provided. Press Enter to create a release for '{current_version} --> {next_version}'")
         create_release()

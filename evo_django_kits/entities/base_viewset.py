@@ -2,8 +2,8 @@ from rest_framework import viewsets
 from rest_framework.decorators import action
 from rest_framework.permissions import IsAdminUser
 
-from .evo_response import EvoResponse
-from .serializers.bulk_delete_serializer import BulkDeleteSerializer
+from evo_django_kits.entities.evo_response import EvoResponse
+from evo_django_kits.entities.serializers.bulk_delete_serializer import BulkDeleteSerializer
 
 
 class BaseViewSet(viewsets.ModelViewSet):
@@ -31,14 +31,10 @@ class BaseViewSet(viewsets.ModelViewSet):
 
     def update(self, request, *args, **kwargs):
         instance = self.get_object()
-        serializer = self.get_serializer(
-            instance, data=request.data, partial=kwargs.get("partial", False)
-        )
+        serializer = self.get_serializer(instance, data=request.data, partial=kwargs.get("partial", False))
         serializer.is_valid(raise_exception=True)
         serializer.save()
-        return self.response(
-            data=serializer.data, status=200, message="Updated Successfully"
-        )
+        return self.response(data=serializer.data, status=200, message="Updated Successfully")
 
     def destroy(self, request, *args, **kwargs):
         instance = self.get_object()
@@ -64,6 +60,4 @@ class BaseViewSet(viewsets.ModelViewSet):
         serializer.is_valid(raise_exception=True)
         ids = serializer.validated_data["ids"]
         self.queryset.filter(id__in=ids).delete()
-        return self.response(
-            status=204, data=[ids], message=f"Delete {len(ids)} successful"
-        )
+        return self.response(status=204, data=[ids], message=f"Delete {len(ids)} successful")
