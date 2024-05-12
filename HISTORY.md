@@ -2,6 +2,12 @@ Changelog
 =========
 
 
+(unreleased)
+------------
+- - Fix import error. [maycuatroi]
+- Release: version 0.0.12 🚀 [maycuatroi]
+
+
 0.0.12 (2024-05-12)
 -------------------
 - Release: version 0.0.12 🚀 [maycuatroi]
