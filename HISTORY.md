@@ -2,8 +2,9 @@ Changelog
 =========
 
 
-(unreleased)
-------------
+0.0.12 (2024-05-12)
+-------------------
+- Release: version 0.0.12 🚀 [maycuatroi]
 - - add config `app_prefix` for evo router. [maycuatroi]
 - - lint code. [maycuatroi]
 - Merge remote-tracking branch 'origin/main' [maycuatroi]
