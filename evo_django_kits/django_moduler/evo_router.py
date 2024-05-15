@@ -1,6 +1,8 @@
 from django.conf import settings as django_settings
 
 from evo_django_kits.entities.evo_logger import EvoLogger
+import os
+import importlib.util
 
 
 class EvoRouter:
@@ -15,9 +17,12 @@ class EvoRouter:
             INSTALLED_APPS = [app for app in INSTALLED_APPS if app.startswith(self.app_prefix)]
         for app in INSTALLED_APPS:
             try:
-                app_router = __import__(f"{app}.urls", fromlist=["router"]).router
+                urls_module = importlib.import_module(f"{app}.urls")
+                app_router = urls_module.router
                 router.registry.extend(app_router.registry)
                 print(f"Auto register {app} router")
+            except ModuleNotFoundError as e:
+                self.logger.warning(f"ModuleNotFoundError: {app}.urls not found")
 
             except ImportError as e:
                 self.logger.warning(f"Cannot import {app}.urls or router not found in {app}.urls")
