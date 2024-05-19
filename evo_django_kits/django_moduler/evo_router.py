@@ -1,8 +1,8 @@
+import importlib.util
+
 from django.conf import settings as django_settings
 
 from evo_django_kits.entities.evo_logger import EvoLogger
-import os
-import importlib.util
 
 
 class EvoRouter:
@@ -22,7 +22,10 @@ class EvoRouter:
                 router.registry.extend(app_router.registry)
                 print(f"Auto register {app} router")
             except ModuleNotFoundError as e:
-                self.logger.warning(f"ModuleNotFoundError: {app}.urls not found")
+                if e.name == f"{app}.urls":
+                    self.logger.warning(f"ModuleNotFoundError: {app}.urls not found")
+                else:
+                    raise e
 
             except ImportError as e:
                 self.logger.warning(f"Cannot import {app}.urls or router not found in {app}.urls")
