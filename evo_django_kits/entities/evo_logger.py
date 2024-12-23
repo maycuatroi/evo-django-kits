@@ -6,7 +6,6 @@ class EvoLogger(logging.Logger):
         super().__init__(name, level)
         self.setLevel(level)
         self.addHandler(logging.StreamHandler())
-        self.addHandler(logging.FileHandler("evo.log"))
         self.propagate = False
 
     def log(self, level, msg, *args, **kwargs):
