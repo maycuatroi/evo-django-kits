@@ -1,11 +1,11 @@
-name: Auto Version Bump and Release
+name: Auto Release to PyPI
 
 on:
   push:
     branches: [main]
 
 jobs:
-  bump-and-release:
+  auto-release:
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -13,29 +13,69 @@ jobs:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
-          # Using PAT instead of GITHUB_TOKEN for cross-repo operations
-          token: ${{ secrets.RELEASE_PAT }}
+          token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Set up Python
-        uses: actions/setup-python@v4
+        uses: actions/setup-python@v5
         with:
           python-version: "3.9"
 
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install -r requirements.txt
-          pip install requests python-dotenv GitPython
-
-      - name: Set GitHub token
-        run: |
-          # Use PAT for higher permissions
-          echo "GITHUB_TOKEN=${{ secrets.RELEASE_PAT }}" >> $GITHUB_ENV
+          pip install setuptools wheel twine bumpversion
 
       - name: Configure Git
         run: |
-          git config --global user.name "GitHub Actions"
-          git config --global user.email "actions@github.com"
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action"
 
-      - name: Bump version and create release
-        run: python scripts/create-new-release.py
+      - name: Bump version
+        run: |
+          # Determine version bump type based on commit messages
+          COMMIT_MSG=$(git log -1 --pretty=%B)
+          if [[ "$COMMIT_MSG" == *"BREAKING CHANGE"* ]]; then
+            bumpversion major
+          elif [[ "$COMMIT_MSG" == *"feat"* ]]; then
+            bumpversion minor
+          else
+            bumpversion patch
+          fi
+
+          # Extract the new version
+          NEW_VERSION=$(cat evo_cli/VERSION)
+          echo "NEW_VERSION=$NEW_VERSION" >> $GITHUB_ENV
+
+      - name: Build package
+        run: |
+          python setup.py sdist bdist_wheel
+
+      - name: Publish to PyPI
+        env:
+          TWINE_USERNAME: __token__
+          TWINE_PASSWORD: ${{ secrets.PYPI_API_TOKEN }}
+        run: |
+          twine upload dist/*
+
+      - name: Create GitHub Release
+        run: |
+          # Generate a changelog from the commits since last tag
+          PREVIOUS_TAG=$(git describe --tags --abbrev=0 || echo "")
+          if [ -z "$PREVIOUS_TAG" ]; then
+            CHANGELOG=$(git log --oneline)
+          else
+            CHANGELOG=$(git log --oneline ${PREVIOUS_TAG}..HEAD)
+          fi
+          echo "$CHANGELOG" > release_notes.md
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v${{ env.NEW_VERSION }}
+          name: Release v${{ env.NEW_VERSION }}
+          body_path: release_notes.md
+          generate_release_notes: true
+
+      - name: Push version update
+        run: |
+          git push --follow-tags
