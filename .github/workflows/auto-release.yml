@@ -43,7 +43,7 @@ jobs:
           fi
 
           # Extract the new version
-          NEW_VERSION=$(cat evo_cli/VERSION)
+          NEW_VERSION=$(cat evo_django_kits/VERSION)
           echo "NEW_VERSION=$NEW_VERSION" >> $GITHUB_ENV
 
       - name: Build package
