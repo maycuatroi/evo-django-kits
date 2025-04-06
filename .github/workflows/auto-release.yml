@@ -1,0 +1,41 @@
+name: Auto Version Bump and Release
+
+on:
+  push:
+    branches: [main]
+
+jobs:
+  bump-and-release:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+          # Using PAT instead of GITHUB_TOKEN for cross-repo operations
+          token: ${{ secrets.RELEASE_PAT }}
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: "3.9"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install requests python-dotenv GitPython
+
+      - name: Set GitHub token
+        run: |
+          # Use PAT for higher permissions
+          echo "GITHUB_TOKEN=${{ secrets.RELEASE_PAT }}" >> $GITHUB_ENV
+
+      - name: Configure Git
+        run: |
+          git config --global user.name "GitHub Actions"
+          git config --global user.email "actions@github.com"
+
+      - name: Bump version and create release
+        run: python scripts/create-new-release.py

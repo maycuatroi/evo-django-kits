@@ -1,26 +1,37 @@
 import importlib.util
 
+
 from django.conf import settings as django_settings
 from django.urls import include, path
-from rest_framework.routers import BaseRouter
-
-from evo_django_kits.entities.evo_logger import EvoLogger
+from loguru import logger
 
 
 class EvoRouter:
+
+    __default_router = None
+
     def __init__(self, app_prefix=None):
         self.app_prefix = app_prefix
-        self.logger = EvoLogger()
-        self.routers = []
-        self.main_router = None
+        self.main_router = self.get_default_router()
+        self.routers = [self.main_router]
 
-    def auto_router(self, router):
+    def get_default_router(self):
+        if EvoRouter.__default_router is None:
+            from rest_framework.routers import DefaultRouter
+
+            EvoRouter.__default_router = DefaultRouter()
+        return EvoRouter.__default_router
+
+    def auto_router(self):
+        from rest_framework.routers import BaseRouter
+
         INSTALLED_APPS = django_settings.INSTALLED_APPS
         IS_DEBUG = django_settings.DEBUG
         if self.app_prefix:
             INSTALLED_APPS = [app for app in INSTALLED_APPS if app.startswith(self.app_prefix)]
-        self.main_router = router
-        self.routers.append(router)
+
+        # Collect router registrations
+        registered_routers = []
 
         for app in INSTALLED_APPS:
             try:
@@ -30,29 +41,40 @@ class EvoRouter:
                     attr_obj = getattr(urls_module, attr)
                     if isinstance(attr_obj, BaseRouter):
                         app_router = urls_module.router
-                        print(f"Auto register \033[94m{app}\033[0m router {attr}")
+                        registered_routers.append((app, attr))
 
                         # Extract routes from sub-router
                         for prefix, viewset, basename in app_router.registry:
                             self.main_router.register(prefix=prefix, viewset=viewset, basename=basename)
 
             except ModuleNotFoundError as e:
-                if e.name == f"{app}.urls":
-                    self.logger.warning(f"ModuleNotFoundError: {app}.urls not found")
-                else:
+                if e.name != f"{app}.urls":
                     raise e
 
             except ImportError as e:
-                self.logger.warning(f"Cannot import {app}.urls or router not found in {app}.urls")
                 if IS_DEBUG:
                     raise e
             except AttributeError as e:
-                self.logger.warning(f"Cannot import {app}.urls or router not found in {app}.urls")
                 if IS_DEBUG:
                     raise e
 
-        return router
+        # Print registration summary as a table
+        if registered_routers:
+            print("\nAuto-registered Routers:")
+            print("=" * 50)
+            print(f"{'App':<30} {'Router':<20}")
+            print("-" * 50)
+            for app, router_name in registered_routers:
+                print(f"\033[94m{app:<30}\033[0m {router_name:<20}")
+            print("=" * 50 + "\n")
+
+        return self.main_router
 
     def get_paths(self, base_url: str = ""):
         # Since we've consolidated all routes into main_router, we only need to return its paths
         return [path(base_url, include(self.main_router.urls))]
+
+
+def get_router():
+    evo_router = EvoRouter().auto_router()
+    return evo_router
