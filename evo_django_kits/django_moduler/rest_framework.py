@@ -2,20 +2,21 @@ import importlib
 
 from django.conf import settings
 from rest_framework import serializers
-from .evo_router import get_router
+from rest_framework.routers import DefaultRouter
 
 
 class RestFrameworkModuler:
     """Class that handles registration of Django models with REST framework"""
 
     _instance = None
+    _abstract_viewset_class = None
 
     def __new__(cls):
         if cls._instance is None:
             cls._instance = super(RestFrameworkModuler, cls).__new__(cls)
             # Initialize instance attributes
-            cls._instance.router = get_router()
-            cls._instance._registry = {}
+            cls._instance.router = DefaultRouter()
+            cls._instance.registry = {}
         return cls._instance
 
     def create_serializer_class(self, model_class, **options):
@@ -94,20 +95,28 @@ class RestFrameworkModuler:
         # Create and return the serializer class
         return type(f"{model_class.__name__}Serializer", (serializers.ModelSerializer,), serializer_attrs)
 
-    def create_viewset_class(self, model_class, serializer_class, abstract_viewset_class=None, mixins=None, **options):
-        """Dynamically create a viewset class for a model"""
-
-        if abstract_viewset_class is None:
+    def get_abstract_viewset_class(self):
+        """Get the abstract viewset class from settings or use default"""
+        if self._abstract_viewset_class is None:
             # get EVO_ABSTRACT_VIEWSET from settings
             # if not set, use BaseViewSet
             if not hasattr(settings, "EVO_ABSTRACT_VIEWSET"):
                 from evo_django_kits.entities.base_viewset import BaseViewSet
 
-                abstract_viewset_class = BaseViewSet
+                self._abstract_viewset_class = BaseViewSet
             else:
                 # abstract_viewset_class is a string, import it
-                # ex: "evo_django_kits.entities.base_viewset:BaseViewSet"
-                abstract_viewset_class = importlib.import_module(settings.EVO_ABSTRACT_VIEWSET)
+                # ex: "evo_django_kits.entities.base_viewset:BaseViewSet" do lazy import
+                module_name, class_name = settings.EVO_ABSTRACT_VIEWSET.rsplit(":", 1)
+                module = importlib.import_module(module_name)
+                self._abstract_viewset_class = getattr(module, class_name)
+        return self._abstract_viewset_class
+
+    def create_viewset_class(self, model_class, serializer_class, abstract_viewset_class=None, mixins=None, **options):
+        """Dynamically create a viewset class for a model"""
+
+        if abstract_viewset_class is None:
+            abstract_viewset_class = self.get_abstract_viewset_class()
         if mixins is None:
             mixins = []
 
@@ -184,8 +193,8 @@ class RestFrameworkModuler:
             The registered viewset class
         """
         # Check if model is already registered
-        if model_class in self._registry:
-            return self._registry[model_class]["viewset_class"]
+        if model_class in self.registry:
+            return self.registry[model_class]["viewset_class"]
 
         # Use custom serializer class or create one
         serializer_class = options.get("serializer_class")
@@ -209,7 +218,7 @@ class RestFrameworkModuler:
         self.router.register(resource_name, viewset_class, basename=resource_name)
 
         # Store in registry
-        self._registry[model_class] = {
+        self.registry[model_class] = {
             "serializer_class": serializer_class,
             "viewset_class": viewset_class,
             "resource_name": resource_name,
@@ -220,16 +229,16 @@ class RestFrameworkModuler:
 
     def unregister_model(self, model_class):
         """Unregister a model from the REST framework"""
-        if model_class in self._registry:
+        if model_class in self.registry:
             # Can't directly unregister from DefaultRouter, but we can keep track
             # of which models are registered
-            del self._registry[model_class]
+            del self.registry[model_class]
             return True
         return False
 
     def is_registered(self, model_class):
         """Check if a model is registered"""
-        return model_class in self._registry
+        return model_class in self.registry
 
 
 def register_model(model_class, abstract_viewset_class=None, mixins=None, **options):

@@ -4,6 +4,8 @@ import importlib.util
 from django.conf import settings as django_settings
 from django.urls import include, path
 from loguru import logger
+from rest_framework.routers import BaseRouter
+from .rest_framework import RestFrameworkModuler
 
 
 class EvoRouter:
@@ -22,9 +24,14 @@ class EvoRouter:
             EvoRouter.__default_router = DefaultRouter()
         return EvoRouter.__default_router
 
-    def auto_router(self):
-        from rest_framework.routers import BaseRouter
+    def extend_router(self, app_router):
+        """
+        Extends the main router with routes from an app router
+        """
+        for prefix, viewset, basename in app_router.registry:
+            self.main_router.register(prefix=prefix, viewset=viewset, basename=basename)
 
+    def auto_router(self):
         INSTALLED_APPS = django_settings.INSTALLED_APPS
         IS_DEBUG = django_settings.DEBUG
         if self.app_prefix:
@@ -42,10 +49,7 @@ class EvoRouter:
                     if isinstance(attr_obj, BaseRouter):
                         app_router = urls_module.router
                         registered_routers.append((app, attr))
-
-                        # Extract routes from sub-router
-                        for prefix, viewset, basename in app_router.registry:
-                            self.main_router.register(prefix=prefix, viewset=viewset, basename=basename)
+                        self.extend_router(app_router)
 
             except ModuleNotFoundError as e:
                 if e.name != f"{app}.urls":
@@ -68,6 +72,8 @@ class EvoRouter:
                 print(f"\033[94m{app:<30}\033[0m {router_name:<20}")
             print("=" * 50 + "\n")
 
+        self.extend_router(RestFrameworkModuler().router)
+
         return self.main_router
 
     def get_paths(self, base_url: str = ""):
@@ -76,5 +82,5 @@ class EvoRouter:
 
 
 def get_router():
-    evo_router = EvoRouter().auto_router()
-    return evo_router
+    router = EvoRouter().auto_router()
+    return router
