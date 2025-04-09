@@ -32,20 +32,35 @@ jobs:
 
       - name: Bump version
         run: |
-          # Determine version bump type based on commit messages
-          COMMIT_MSG=$(git log -1 --pretty=%B)
-          if [[ "$COMMIT_MSG" == *"BREAKING CHANGE"* ]]; then
-            bumpversion major
-          elif [[ "$COMMIT_MSG" == *"feat"* ]]; then
-            bumpversion minor
+          # Get all commits since last tag
+          LAST_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "")
+          if [ -z "$LAST_TAG" ]; then
+            COMMITS=$(git log --format=%B)
           else
-            bumpversion patch
+            COMMITS=$(git log ${LAST_TAG}..HEAD --format=%B)
           fi
+
+          # Determine version bump type based on conventional commits
+          BUMP_TYPE="patch"  # default to patch
+
+          echo "Analyzing commits for version bump type..."
+          echo "$COMMITS" | while read -r commit; do
+            if [[ "$commit" == *"BREAKING CHANGE"* ]] || [[ "$commit" =~ ^BREAKING[[:space:]]CHANGE ]]; then
+              echo "Found breaking change: $commit"
+              BUMP_TYPE="major"
+              break
+            elif [[ "$commit" =~ ^feat[[:space:]]*: ]] || [[ "$commit" =~ ^feat(\([^)]+\))?:[[:space:]] ]]; then
+              echo "Found feature: $commit"
+              BUMP_TYPE="minor"
+            fi
+          done
+
+          echo "Bumping $BUMP_TYPE version..."
+          bumpversion --allow-dirty $BUMP_TYPE
 
           # Extract the new version
           NEW_VERSION=$(cat evo_django_kits/VERSION)
           echo "NEW_VERSION=$NEW_VERSION" >> $GITHUB_ENV
-          echo "NEW_VERSION=$NEW_VERSION" >> evo_django_kits/VERSION
 
       - name: Build package
         run: |
@@ -60,14 +75,28 @@ jobs:
 
       - name: Create GitHub Release
         run: |
-          # Generate a changelog from the commits since last tag
-          PREVIOUS_TAG=$(git describe --tags --abbrev=0 || echo "")
-          if [ -z "$PREVIOUS_TAG" ]; then
-            CHANGELOG=$(git log --oneline)
+          # Generate changelog using conventional commits
+          LAST_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "")
+          if [ -z "$LAST_TAG" ]; then
+            COMMITS=$(git log --format="* %s" --no-merges)
           else
-            CHANGELOG=$(git log --oneline ${PREVIOUS_TAG}..HEAD)
+            COMMITS=$(git log ${LAST_TAG}..HEAD --format="* %s" --no-merges)
           fi
-          echo "$CHANGELOG" > release_notes.md
+
+          # Categorize changes
+          echo "## Changes" > release_notes.md
+          echo "" >> release_notes.md
+          echo "### Breaking Changes" >> release_notes.md
+          echo "$COMMITS" | grep -i "BREAKING CHANGE" >> release_notes.md || true
+          echo "" >> release_notes.md
+          echo "### Features" >> release_notes.md
+          echo "$COMMITS" | grep -i "^* feat" >> release_notes.md || true
+          echo "" >> release_notes.md
+          echo "### Bug Fixes" >> release_notes.md
+          echo "$COMMITS" | grep -i "^* fix" >> release_notes.md || true
+          echo "" >> release_notes.md
+          echo "### Other Changes" >> release_notes.md
+          echo "$COMMITS" | grep -iv "^* feat\|^* fix\|BREAKING CHANGE" >> release_notes.md || true
 
       - name: Create Release
         uses: softprops/action-gh-release@v2
