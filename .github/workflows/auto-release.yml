@@ -37,26 +37,26 @@ jobs:
           if [ -z "$LAST_TAG" ]; then
             COMMITS=$(git log --format=%B)
           else
-            COMMITS=$(git log ${LAST_TAG}..HEAD --format=%B)
+            COMMITS=$(git log "${LAST_TAG}..HEAD" --format=%B)
           fi
 
           # Determine version bump type based on conventional commits
           BUMP_TYPE="patch"  # default to patch
 
           echo "Analyzing commits for version bump type..."
-          echo "$COMMITS" | while read -r commit; do
-            if [[ "$commit" == *"BREAKING CHANGE"* ]] || [[ "$commit" =~ ^BREAKING[[:space:]]CHANGE ]]; then
+          while IFS= read -r commit || [ -n "$commit" ]; do
+            if echo "$commit" | grep -qE "BREAKING CHANGE|^BREAKING CHANGE"; then
               echo "Found breaking change: $commit"
               BUMP_TYPE="major"
               break
-            elif [[ "$commit" =~ ^feat[[:space:]]*: ]] || [[ "$commit" =~ ^feat(\([^)]+\))?:[[:space:]] ]]; then
+            elif echo "$commit" | grep -qE "^feat(\([[:alnum:]_-]+\))?:"; then
               echo "Found feature: $commit"
               BUMP_TYPE="minor"
             fi
-          done
+          done <<< "$COMMITS"
 
           echo "Bumping $BUMP_TYPE version..."
-          bumpversion --allow-dirty $BUMP_TYPE
+          bumpversion --allow-dirty "$BUMP_TYPE"
 
           # Extract the new version
           NEW_VERSION=$(cat evo_django_kits/VERSION)
@@ -80,23 +80,24 @@ jobs:
           if [ -z "$LAST_TAG" ]; then
             COMMITS=$(git log --format="* %s" --no-merges)
           else
-            COMMITS=$(git log ${LAST_TAG}..HEAD --format="* %s" --no-merges)
+            COMMITS=$(git log "${LAST_TAG}..HEAD" --format="* %s" --no-merges)
           fi
 
-          # Categorize changes
-          echo "## Changes" > release_notes.md
-          echo "" >> release_notes.md
-          echo "### Breaking Changes" >> release_notes.md
-          echo "$COMMITS" | grep -i "BREAKING CHANGE" >> release_notes.md || true
-          echo "" >> release_notes.md
-          echo "### Features" >> release_notes.md
-          echo "$COMMITS" | grep -i "^* feat" >> release_notes.md || true
-          echo "" >> release_notes.md
-          echo "### Bug Fixes" >> release_notes.md
-          echo "$COMMITS" | grep -i "^* fix" >> release_notes.md || true
-          echo "" >> release_notes.md
-          echo "### Other Changes" >> release_notes.md
-          echo "$COMMITS" | grep -iv "^* feat\|^* fix\|BREAKING CHANGE" >> release_notes.md || true
+          {
+            echo "## Changes"
+            echo
+            echo "### Breaking Changes"
+            echo "$COMMITS" | grep -i "BREAKING CHANGE" || true
+            echo
+            echo "### Features"
+            echo "$COMMITS" | grep -i "^* feat" || true
+            echo
+            echo "### Bug Fixes"
+            echo "$COMMITS" | grep -i "^* fix" || true
+            echo
+            echo "### Other Changes"
+            echo "$COMMITS" | grep -iv "^* feat\|^* fix\|BREAKING CHANGE" || true
+          } > release_notes.md
 
       - name: Create Release
         uses: softprops/action-gh-release@v2
